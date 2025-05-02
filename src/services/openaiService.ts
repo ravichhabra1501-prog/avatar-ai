@@ -25,14 +25,14 @@ export const generateResponse = async (messages: Message[]): Promise<string> => 
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('API Error:', errorData);
-      throw new Error(`API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+      console.error('AVATAR API Error:', errorData);
+      throw new Error(`AVATAR API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
     return data.choices[0].message.content;
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
+    console.error('Error calling AVATAR API service:', error);
     throw error;
   }
 };

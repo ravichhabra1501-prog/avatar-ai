@@ -64,11 +64,12 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				avatar: {
-					light: '#f8f9fa',
-					dark: '#212529',
-					primary: '#e9ecef',
-					secondary: '#ced4da',
-					accent: '#adb5bd'
+					light: '#EDF1FF',
+					dark: '#1A2333',
+					primary: '#1E90FF',
+					secondary: '#00BFFF',
+					accent: '#74BBFB',
+					glow: '#50C8FC'
 				}
 			},
 			borderRadius: {
@@ -116,6 +117,14 @@ export default {
 				'typing': {
 					from: { width: '0' },
 					to: { width: '100%' }
+				},
+				'glow': {
+					'0%, 100%': { boxShadow: '0 0 15px 5px rgba(80, 200, 252, 0.6)' },
+					'50%': { boxShadow: '0 0 25px 10px rgba(80, 200, 252, 0.8)' }
+				},
+				'rotate': {
+					'0%': { transform: 'rotate(0deg)' },
+					'100%': { transform: 'rotate(360deg)' }
 				}
 			},
 			animation: {
@@ -126,7 +135,13 @@ export default {
 				'fade-in': 'fade-in 0.3s ease-out',
 				'fade-out': 'fade-out 0.3s ease-out',
 				'slide-up': 'slide-up 0.5s ease-out',
-				'typing': 'typing 1.5s ease-out'
+				'typing': 'typing 1.5s ease-out',
+				'glow': 'glow 3s ease-in-out infinite',
+				'rotate-slow': 'rotate 8s linear infinite'
+			},
+			backgroundImage: {
+				'avatar-gradient': 'radial-gradient(circle at center, #1E90FF, #00BFFF, #74BBFB)',
+				'chat-gradient': 'linear-gradient(135deg, rgba(30, 144, 255, 0.1), rgba(0, 191, 255, 0.05))'
 			}
 		}
 	},
