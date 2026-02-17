@@ -1,24 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { SendHorizontal, Eraser, MoonStar, Sun, Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
-import Avatar from './Avatar';
-import ChatMessage from './ChatMessage';
-import { streamChat, Message } from '@/services/openaiService';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import { Message, streamChat } from "@/services/openaiService";
+import { Eraser, MoonStar, SendHorizontal, Sun, Zap } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import Avatar from "./Avatar";
+import ChatMessage from "./ChatMessage";
 
 const ChatInterface: React.FC = () => {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isActiveAvatar, setIsActiveAvatar] = useState(false);
-  const [messages, setMessages] = useState<{ content: string; isUser: boolean }[]>([]);
+  const [messages, setMessages] = useState<
+    { content: string; isUser: boolean }[]
+  >([]);
   const [newMessageIndex, setNewMessageIndex] = useState<number | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -32,14 +34,14 @@ const ChatInterface: React.FC = () => {
   }, [messages, newMessageIndex]);
 
   useEffect(() => {
-    document.body.classList.toggle('dark', theme === 'dark');
+    document.body.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
     toast({
       title: "Theme changed",
-      description: `Switched to ${theme === 'light' ? 'dark' : 'light'} mode`,
+      description: `Switched to ${theme === "light" ? "dark" : "light"} mode`,
     });
   };
 
@@ -48,18 +50,18 @@ const ChatInterface: React.FC = () => {
     if (!input.trim()) return;
 
     const userMessage = { content: input, isUser: true };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setNewMessageIndex(messages.length);
-    setInput('');
+    setInput("");
     setIsActiveAvatar(true);
     setIsThinking(true);
 
     const apiMessages: Message[] = [
-      ...messages.map(msg => ({
-        role: msg.isUser ? 'user' as const : 'assistant' as const,
-        content: msg.content
+      ...messages.map((msg) => ({
+        role: msg.isUser ? ("user" as const) : ("assistant" as const),
+        content: msg.content,
       })),
-      { role: 'user' as const, content: input }
+      { role: "user" as const, content: input },
     ];
 
     let assistantSoFar = "";
@@ -69,10 +71,17 @@ const ChatInterface: React.FC = () => {
         messages: apiMessages,
         onDelta: (chunk) => {
           assistantSoFar += chunk;
-          setMessages(prev => {
+          setMessages((prev) => {
             const last = prev[prev.length - 1];
-            if (!last?.isUser && prev.length > 0 && last?.content !== undefined && assistantSoFar.length > chunk.length) {
-              return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+            if (
+              !last?.isUser &&
+              prev.length > 0 &&
+              last?.content !== undefined &&
+              assistantSoFar.length > chunk.length
+            ) {
+              return prev.map((m, i) =>
+                i === prev.length - 1 ? { ...m, content: assistantSoFar } : m,
+              );
             }
             return [...prev, { content: assistantSoFar, isUser: false }];
           });
@@ -83,13 +92,16 @@ const ChatInterface: React.FC = () => {
         },
       });
     } catch (error) {
-      console.error('Error getting response:', error);
+      console.error("Error getting response:", error);
       setIsThinking(false);
       setIsActiveAvatar(false);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to get a response. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to get a response. Please try again.",
       });
     }
   };
@@ -103,7 +115,9 @@ const ChatInterface: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col min-h-screen animated-bg ${theme === 'dark' ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50'}`}>
+    <div
+      className={`flex flex-col min-h-screen animated-bg ${theme === "dark" ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" : "bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50"}`}
+    >
       <div className="container max-w-4xl mx-auto px-4 py-8 flex-1 flex flex-col">
         <div className="mb-8 relative">
           <div className="absolute top-0 right-0 flex space-x-2">
@@ -113,7 +127,7 @@ const ChatInterface: React.FC = () => {
               onClick={toggleTheme}
               className="rounded-full h-10 w-10 bg-white/70 dark:bg-gray-800/70 shadow-md hover:shadow-lg transition-all"
             >
-              {theme === 'light' ? <MoonStar size={18} /> : <Sun size={18} />}
+              {theme === "light" ? <MoonStar size={18} /> : <Sun size={18} />}
             </Button>
             <Button
               variant="ghost"
@@ -128,7 +142,7 @@ const ChatInterface: React.FC = () => {
             <Avatar isActive={isActiveAvatar} isThinking={isThinking} />
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-hidden flex flex-col glass-panel rounded-2xl shadow-lg border border-avatar-accent/20">
           <div className="p-4 border-b border-avatar-accent/20 flex justify-between items-center">
             <h2 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center">
@@ -136,38 +150,80 @@ const ChatInterface: React.FC = () => {
               AVATAR Chat
             </h2>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-4 chat-container">
             {messages.length === 0 ? (
               <div className="h-full flex items-center justify-center text-center p-4">
                 <div className="max-w-md p-6 rounded-2xl bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-avatar-accent/20 shadow-lg">
                   <div className="mb-4 w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-avatar-primary to-avatar-secondary flex items-center justify-center">
-                    <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M21 11.5C21 16.75 16.75 21 11.5 21C6.25 21 2 16.75 2 11.5C2 6.25 6.25 2 11.5 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M22 22L20 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M15 8H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M17 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M13 16H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <svg
+                      className="w-8 h-8 text-white"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M21 11.5C21 16.75 16.75 21 11.5 21C6.25 21 2 16.75 2 11.5C2 6.25 6.25 2 11.5 2"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M22 22L20 20"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M15 8H9"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M17 12H9"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M13 16H9"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </div>
-                  <p className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Welcome to AVATAR</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">How can I assist you today?</p>
+                  <p className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">
+                    Welcome to AVATAR
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    How can I assist you today?
+                  </p>
                 </div>
               </div>
             ) : (
               messages.map((message, index) => (
-                <ChatMessage 
-                  key={index} 
-                  content={message.content} 
-                  isUser={message.isUser} 
+                <ChatMessage
+                  key={index}
+                  content={message.content}
+                  isUser={message.isUser}
                   isNew={index === newMessageIndex}
                 />
               ))
             )}
             <div ref={messagesEndRef} />
           </div>
-          
-          <form onSubmit={handleSubmit} className="p-4 border-t border-avatar-accent/20">
+
+          <form
+            onSubmit={handleSubmit}
+            className="p-4 border-t border-avatar-accent/20"
+          >
             <div className="flex gap-2">
               <Input
                 type="text"
@@ -177,8 +233,8 @@ const ChatInterface: React.FC = () => {
                 className="flex-1 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-avatar-accent border-avatar-accent/20 shadow-sm"
                 disabled={isThinking}
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={!input.trim() || isThinking}
                 className="bg-gradient-to-br from-avatar-primary to-avatar-secondary hover:opacity-90 transition-opacity"
               >
@@ -190,7 +246,7 @@ const ChatInterface: React.FC = () => {
         </div>
       </div>
       <footer className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-        <p>AVATAR AI • Created with Lovable</p>
+        <p>AVATAR AI</p>
       </footer>
     </div>
   );
