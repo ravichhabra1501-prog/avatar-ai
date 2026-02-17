@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { SendHorizontal, Eraser, MoonStar, Sun, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import Avatar from './Avatar';
 import ChatMessage from './ChatMessage';
-import { generateResponse, Message } from '@/services/openaiService';
+import { streamChat, Message } from '@/services/openaiService';
 
 const ChatInterface: React.FC = () => {
   const [input, setInput] = useState('');
@@ -33,7 +32,6 @@ const ChatInterface: React.FC = () => {
   }, [messages, newMessageIndex]);
 
   useEffect(() => {
-    // Set body class for theme
     document.body.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
@@ -49,47 +47,50 @@ const ChatInterface: React.FC = () => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Add user message
     const userMessage = { content: input, isUser: true };
     setMessages(prev => [...prev, userMessage]);
     setNewMessageIndex(messages.length);
     setInput('');
     setIsActiveAvatar(true);
-    
-    // Start thinking animation
     setIsThinking(true);
 
-    try {
-      // Convert messages for OpenAI API
-      const apiMessages: Message[] = [
-        {
-          role: 'system',
-          content: 'You are AVATAR, a helpful, friendly AI assistant. Provide concise, accurate answers to user questions. Be conversational but efficient.'
-        },
-        ...messages.map(msg => ({
-          role: msg.isUser ? 'user' as const : 'assistant' as const,
-          content: msg.content
-        })),
-        { role: 'user', content: input }
-      ];
+    const apiMessages: Message[] = [
+      ...messages.map(msg => ({
+        role: msg.isUser ? 'user' as const : 'assistant' as const,
+        content: msg.content
+      })),
+      { role: 'user' as const, content: input }
+    ];
 
-      // Get AI response
-      const response = await generateResponse(apiMessages);
-      
-      // Add AI message
-      const aiMessage = { content: response, isUser: false };
-      setMessages(prev => [...prev, aiMessage]);
-      setNewMessageIndex(messages.length + 1);
+    let assistantSoFar = "";
+
+    try {
+      await streamChat({
+        messages: apiMessages,
+        onDelta: (chunk) => {
+          assistantSoFar += chunk;
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (!last?.isUser && prev.length > 0 && last?.content !== undefined && assistantSoFar.length > chunk.length) {
+              return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+            }
+            return [...prev, { content: assistantSoFar, isUser: false }];
+          });
+        },
+        onDone: () => {
+          setIsThinking(false);
+          setIsActiveAvatar(false);
+        },
+      });
     } catch (error) {
       console.error('Error getting response:', error);
+      setIsThinking(false);
+      setIsActiveAvatar(false);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to get a response. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to get a response. Please try again.",
       });
-    } finally {
-      setIsThinking(false);
-      setIsActiveAvatar(false);
     }
   };
 

@@ -1,38 +1,84 @@
-
-const OPENAI_API_KEY = "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";
-const API_URL = "https://api.openai.com/v1/chat/completions";
-
 export type Message = {
   role: 'user' | 'assistant' | 'system';
   content: string;
 };
 
-export const generateResponse = async (messages: Message[]): Promise<string> => {
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 1000
-      })
-    });
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('AVATAR API Error:', errorData);
-      throw new Error(`AVATAR API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
-    }
+export async function streamChat({
+  messages,
+  onDelta,
+  onDone,
+}: {
+  messages: Message[];
+  onDelta: (deltaText: string) => void;
+  onDone: () => void;
+}) {
+  const resp = await fetch(CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({ messages }),
+  });
 
-    const data = await response.json();
-    return data.choices[0].message.content;
-  } catch (error) {
-    console.error('Error calling AVATAR API service:', error);
-    throw error;
+  if (!resp.ok || !resp.body) {
+    const errorData = await resp.json().catch(() => ({}));
+    throw new Error(errorData.error || `Request failed with status ${resp.status}`);
   }
-};
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let textBuffer = "";
+  let streamDone = false;
+
+  while (!streamDone) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    textBuffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex: number;
+    while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+      let line = textBuffer.slice(0, newlineIndex);
+      textBuffer = textBuffer.slice(newlineIndex + 1);
+
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (line.startsWith(":") || line.trim() === "") continue;
+      if (!line.startsWith("data: ")) continue;
+
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") {
+        streamDone = true;
+        break;
+      }
+
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (content) onDelta(content);
+      } catch {
+        textBuffer = line + "\n" + textBuffer;
+        break;
+      }
+    }
+  }
+
+  if (textBuffer.trim()) {
+    for (let raw of textBuffer.split("\n")) {
+      if (!raw) continue;
+      if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+      if (raw.startsWith(":") || raw.trim() === "") continue;
+      if (!raw.startsWith("data: ")) continue;
+      const jsonStr = raw.slice(6).trim();
+      if (jsonStr === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (content) onDelta(content);
+      } catch { /* ignore */ }
+    }
+  }
+
+  onDone();
+}
